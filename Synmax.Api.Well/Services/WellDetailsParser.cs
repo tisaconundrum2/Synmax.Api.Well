@@ -9,11 +9,56 @@ namespace Synmax.Api.Well.Services;
 public class WellDetailsParser
 {
     private static readonly HttpClient client = new HttpClient();
+    private const int MaxRetries = 5;
+    private const int InitialDelayMs = 1000;
+
+    private bool IsRateLimited(string html)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+        var rateLimitNode = doc.DocumentNode.SelectSingleNode("//*[@id=\"mainContentContainer\"]/h1");
+        return rateLimitNode?.InnerText?.Trim() == "Site Busy - Rate Limit Reached";
+    }
 
     public async Task<string> GetWellDetails(string apiNumber)
     {
         var url = $"https://wwwapps.emnrd.nm.gov/OCD/OCDPermitting/Data/WellDetails.aspx?api={apiNumber}"; // shouldn't be hardcoded
-        return await client.GetStringAsync(url);
+        var currentDelay = InitialDelayMs;
+        var attempts = 0;
+
+        while (attempts < MaxRetries)
+        {
+            try
+            {
+                var response = await client.GetStringAsync(url);
+                if (!IsRateLimited(response))
+                {
+                    return response;
+                }
+
+                attempts++;
+                if (attempts >= MaxRetries)
+                {
+                    throw new Exception("Maximum retry attempts reached while handling rate limit");
+                }
+
+                await Task.Delay(currentDelay);
+                currentDelay *= 2; // Exponential backoff
+            }
+            catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException)
+            {
+                attempts++;
+                if (attempts >= MaxRetries)
+                {
+                    throw;
+                }
+
+                await Task.Delay(currentDelay);
+                currentDelay *= 2;
+            }
+        }
+
+        throw new Exception("Failed to get well details after maximum retries");
     }
 
     public string ParseField(string html, string fieldId)

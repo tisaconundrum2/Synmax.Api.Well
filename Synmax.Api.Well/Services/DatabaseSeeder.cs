@@ -29,6 +29,7 @@ namespace Synmax.Api.Well.Services
             try
             {
                 await SeedDataAsync(dbContext);
+                // await MultiThreadedSeedDataAsync(dbContext);
                 _logger.LogInformation("Database seeding completed successfully.");
             }
             catch (Exception ex)
@@ -40,6 +41,9 @@ namespace Synmax.Api.Well.Services
 
         private async Task SeedDataAsync(ApplicationDbContext dbContext)
         {
+            /* Original single-threaded version of SeedDataAsync.
+             * Useful for understanding the logic before implementing multi-threading.
+             */
             if (!await dbContext.WellDetails.AnyAsync())
             {
                 var apiNumbers = File.ReadAllLines("apis_pythondev_test.csv")
@@ -78,13 +82,87 @@ namespace Synmax.Api.Well.Services
                         SpudDate = DateTime.TryParse(wellDetails.GetValueOrDefault("SpudDate"), out var spudDate) ? spudDate : DateTime.MinValue,
                         LastInspection = DateTime.TryParse(wellDetails.GetValueOrDefault("LastInspectionDate"), out var lastInspection) ? lastInspection : DateTime.MinValue,
                         TVD = double.TryParse(wellDetails.GetValueOrDefault("TrueVerticalDepth"), out var tvd) ? tvd : 0,
-                        Latitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(',').FirstOrDefault()?.Trim(), out var latitude) ? latitude : 0,
-                        Longitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(',').Skip(1).FirstOrDefault()?.Trim(), out var longitude) ? longitude : 0,
+                        Latitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(new[] { ',', ' ' })[0], out var latitude) ? latitude : 0,
+                        Longitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(new[] { ',', ' ' })[1], out var longitude) ? longitude : 0,
                         CRS = wellDetails.GetValueOrDefault("CRS") ?? string.Empty,
                     });
                     await dbContext.SaveChangesAsync(); // parsing takes a while, so save after each one
                 }
                 _logger.LogInformation("Seeding completed successfully.");
+            }
+        }
+
+        private async Task MultiThreadedSeedDataAsync(ApplicationDbContext dbContext)
+        {
+            /* Multi-threaded version of SeedDataAsync to speed up the seeding process.
+             * This version parses well details in parallel and saves them in batches to the database.
+             * This should significantly reduce the total time taken to seed the database.
+             */
+            if (!await dbContext.WellDetails.AnyAsync())
+            {
+                var apiNumbers = File.ReadAllLines("apis_pythondev_test.csv")
+                    .Skip(1) // skip header
+                    .Select(line => line.Split(',')[0]) // get the first column (api number)
+                    .ToList();
+
+                WellDetailsParser parser = new WellDetailsParser();
+                var tasks = apiNumbers.Select(async apiNumber =>
+                {
+                    try
+                    {
+                        var wellDetails = await parser.ParseWellDetails(apiNumber);
+                        _logger.LogInformation($"Parsed well details for API number: {apiNumber}");
+                        return new WellDetail
+                        {
+                            API = apiNumber,
+                            Operator = wellDetails.GetValueOrDefault("Operator") ?? string.Empty,
+                            Status = wellDetails.GetValueOrDefault("Status") ?? string.Empty,
+                            WellType = wellDetails.GetValueOrDefault("WellType") ?? string.Empty,
+                            WorkType = wellDetails.GetValueOrDefault("WorkType") ?? string.Empty,
+                            DirectionalStatus = wellDetails.GetValueOrDefault("DirectionalStatus") ?? string.Empty,
+                            MultiLateral = wellDetails.GetValueOrDefault("MultiLateral") ?? string.Empty,
+                            MineralOwner = wellDetails.GetValueOrDefault("MineralOwner") ?? string.Empty,
+                            SurfaceOwner = wellDetails.GetValueOrDefault("SurfaceOwner") ?? string.Empty,
+                            SurfaceLocation = string.Join(", ", new[] {
+                                wellDetails.GetValueOrDefault("Location"),
+                                wellDetails.GetValueOrDefault("Lot"),
+                                wellDetails.GetValueOrDefault("FootageNSH"),
+                                wellDetails.GetValueOrDefault("FootageEW"),
+                            }.Where(x => !string.IsNullOrEmpty(x))),
+                            GLElevation = double.TryParse(wellDetails.GetValueOrDefault("GLElevation"), out var glElevation) ? glElevation : 0,
+                            KBElevation = double.TryParse(wellDetails.GetValueOrDefault("KBElevation"), out var kbElevation) ? kbElevation : 0,
+                            DFElevation = double.TryParse(wellDetails.GetValueOrDefault("DFElevation"), out var dfElevation) ? dfElevation : 0,
+                            SingleMultipleCompletion = wellDetails.GetValueOrDefault("Completions") ?? string.Empty,
+                            PotashWaiver = wellDetails.GetValueOrDefault("PotashWaiver") ?? string.Empty,
+                            SpudDate = DateTime.TryParse(wellDetails.GetValueOrDefault("SpudDate"), out var spudDate) ? spudDate : DateTime.MinValue,
+                            LastInspection = DateTime.TryParse(wellDetails.GetValueOrDefault("LastInspectionDate"), out var lastInspection) ? lastInspection : DateTime.MinValue,
+                            TVD = double.TryParse(wellDetails.GetValueOrDefault("TrueVerticalDepth"), out var tvd) ? tvd : 0,
+                            Latitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(new[] { ',', ' ' })[0], out var latitude) ? latitude : 0,
+                            Longitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(new[] { ',', ' ' })[1], out var longitude) ? longitude : 0,
+                            CRS = wellDetails.GetValueOrDefault("CRS") ?? string.Empty,
+                        };
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error parsing well details for API number: {apiNumber}");
+                        return null;
+                    }
+                });
+
+                // Wait for all parsing tasks to complete
+                var wellDetails = (await Task.WhenAll(tasks)).Where(x => x != null).Cast<WellDetail>().ToList();
+
+                // Save in batches of 100 to avoid overwhelming the database
+                const int batchSize = 100;
+                for (int i = 0; i < wellDetails.Count; i += batchSize)
+                {
+                    var batch = wellDetails.Skip(i).Take(batchSize);
+                    dbContext.WellDetails.AddRange(batch);
+                    await dbContext.SaveChangesAsync();
+                    _logger.LogInformation($"Saved batch of {batch.Count()} records ({i + batch.Count()} of {wellDetails.Count} total)");
+                }
+
+                _logger.LogInformation($"Successfully seeded {wellDetails.Count} well details");
             }
         }
     }
