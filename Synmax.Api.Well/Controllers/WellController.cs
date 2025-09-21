@@ -1,60 +1,31 @@
-using Microsoft.EntityFrameworkCore;
-using Synmax.Api.Well.Data;
-using Synmax.Api.Well.Services;
+using System.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Synmax.Api.Well.Models;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace Synmax.Api.Well.Controllers;
 
-// Add services to the container.
-builder.Services.AddControllersWithViews();
-
-// Add Swagger/OpenAPI support
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(c =>
+public class WellController : Controller
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
-    { 
-        Title = "Python OilWell API", 
-        Version = "v1",
-        Description = "API for Python OilWell management"
-    });
-});
+    private readonly ILogger<WellController> _logger;
 
-// Add DbContext
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    public WellController(ILogger<WellController> logger)
+    {
+        _logger = logger;
+    }
 
-// Register database seeder services
-builder.Services.AddScoped<DatabaseSeeder>();
-builder.Services.AddHostedService<DatabaseSeederHostedService>();
+    public IActionResult Index()
+    {
+        return Redirect("/swagger");
+    }
 
-var app = builder.Build();
+    public IActionResult Privacy()
+    {
+        return View();
+    }
 
-// Configure the HTTP request pipeline.
-if (!app.Environment.IsDevelopment())
-{
-    app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
+    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+    }
 }
-
-app.UseHttpsRedirection();
-app.UseRouting();
-
-// Enable Swagger UI
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Python OilWell API V1");
-});
-
-app.UseAuthorization();
-
-app.MapStaticAssets();
-
-app.MapControllerRoute(
-    name: "default",
-    pattern: "{controller=Home}/{action=Index}/{id?}")
-    .WithStaticAssets();
-
-
-app.Run();
