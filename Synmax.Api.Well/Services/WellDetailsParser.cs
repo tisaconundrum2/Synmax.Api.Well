@@ -48,14 +48,15 @@ public class WellDetailsParser
 
             // Location Information
             {"Location", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblLocation")},
-            {"LocationText", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblText")},
             {"Lot", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblLot")},
             {"FootageNSH", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblFootageNSH")},
             {"FootageEW", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblFootageEW")},
+
+            {"LocationText", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblText")},
             {"Coordinates", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_Location_lblCoordinates")},
 
             // Elevation Information
-            {"GLElevation", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_lblGLElevation")},
+            { "GLElevation", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_lblGLElevation")},
             {"KBElevation", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_lblKBElevation")},
             {"DFElevation", ParseField(response, "ctl00_ctl00__main_main_ucGeneralWellInformation_lblDFElevation")},
 

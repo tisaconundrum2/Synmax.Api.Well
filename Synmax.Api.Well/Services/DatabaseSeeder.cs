@@ -58,9 +58,6 @@ namespace Synmax.Api.Well.Services
         {
             if (!await dbContext.WellDetails.AnyAsync())
             {
-                // use the parser to parse the website.
-                // use the apis_pythondev_test.csv to get a list of api numbers to parse.
-                // read the csv file
                 var apiNumbers = File.ReadAllLines("apis_pythondev_test.csv")
                     .Skip(1) // skip header
                     .Select(line => line.Split(',')[0]) // get the first column (api number)
@@ -71,8 +68,10 @@ namespace Synmax.Api.Well.Services
                 foreach (var apiNumber in apiNumbers)
                 {
                     var wellDetails = await parser.ParseWellDetails(apiNumber);
+                    _logger.LogInformation($"Parsed well details for API number: {apiNumber}");
                     dbContext.WellDetails.AddRange(new WellDetail
                     {
+                        API = apiNumber,
                         Operator = wellDetails.GetValueOrDefault("Operator") ?? string.Empty,
                         Status = wellDetails.GetValueOrDefault("Status") ?? string.Empty,
                         WellType = wellDetails.GetValueOrDefault("WellType") ?? string.Empty,
@@ -83,11 +82,9 @@ namespace Synmax.Api.Well.Services
                         SurfaceOwner = wellDetails.GetValueOrDefault("SurfaceOwner") ?? string.Empty,
                         SurfaceLocation = string.Join(", ", new[] {
                             wellDetails.GetValueOrDefault("Location"),
-                            wellDetails.GetValueOrDefault("LocationText"),
                             wellDetails.GetValueOrDefault("Lot"),
                             wellDetails.GetValueOrDefault("FootageNSH"),
                             wellDetails.GetValueOrDefault("FootageEW"),
-                            wellDetails.GetValueOrDefault("Coordinates")
                         }.Where(x => !string.IsNullOrEmpty(x))),
                         GLElevation = double.TryParse(wellDetails.GetValueOrDefault("GLElevation"), out var glElevation) ? glElevation : 0,
                         KBElevation = double.TryParse(wellDetails.GetValueOrDefault("KBElevation"), out var kbElevation) ? kbElevation : 0,
@@ -97,13 +94,13 @@ namespace Synmax.Api.Well.Services
                         SpudDate = DateTime.TryParse(wellDetails.GetValueOrDefault("SpudDate"), out var spudDate) ? spudDate : DateTime.MinValue,
                         LastInspection = DateTime.TryParse(wellDetails.GetValueOrDefault("LastInspectionDate"), out var lastInspection) ? lastInspection : DateTime.MinValue,
                         TVD = double.TryParse(wellDetails.GetValueOrDefault("TrueVerticalDepth"), out var tvd) ? tvd : 0,
-                        API = wellDetails.GetValueOrDefault("API") ?? string.Empty,
-                        Latitude = double.TryParse(wellDetails.GetValueOrDefault("Latitude"), out var latitude) ? latitude : 0,
-                        Longitude = double.TryParse(wellDetails.GetValueOrDefault("Longitude"), out var longitude) ? longitude : 0,
+                        Latitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(',').FirstOrDefault()?.Trim(), out var latitude) ? latitude : 0,
+                        Longitude = double.TryParse(wellDetails.GetValueOrDefault("Coordinates")?.Split(',').Skip(1).FirstOrDefault()?.Trim(), out var longitude) ? longitude : 0,
                         CRS = wellDetails.GetValueOrDefault("CRS") ?? string.Empty,
                     });
+                    await dbContext.SaveChangesAsync(); // parsing takes a while, so save after each one
                 }
-                await dbContext.SaveChangesAsync();
+                _logger.LogInformation("Seeding completed successfully.");
             }
         }
     }

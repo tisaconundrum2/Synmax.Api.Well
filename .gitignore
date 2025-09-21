@@ -289,3 +289,7 @@ __pycache__/
 *.xsd.cs
 
 *.DS_Store
+
+# SQLite database files
+*.db-shm
+*.db-wal

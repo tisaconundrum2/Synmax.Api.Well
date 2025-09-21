@@ -5,12 +5,10 @@ namespace Synmax.Api.Well.Data
 {
     public class ApplicationDbContext : DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-            : base(options)
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
         }
 
-        public DbSet<DatabaseSeeded> DatabaseSeeded { get; set; }
         public DbSet<WellDetail> WellDetails { get; set; }
     }
 }
