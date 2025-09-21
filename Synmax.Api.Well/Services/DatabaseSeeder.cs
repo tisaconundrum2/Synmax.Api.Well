@@ -20,7 +20,7 @@ namespace Synmax.Api.Well.Services
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            if (await HasBeenSeededAsync(dbContext))
+            if (dbContext.WellDetails.Any())
             {
                 _logger.LogInformation("Database has already been seeded. Skipping seed operation.");
                 return;
@@ -29,7 +29,6 @@ namespace Synmax.Api.Well.Services
             try
             {
                 await SeedDataAsync(dbContext);
-                await MarkAsSeededAsync(dbContext);
                 _logger.LogInformation("Database seeding completed successfully.");
             }
             catch (Exception ex)
@@ -37,21 +36,6 @@ namespace Synmax.Api.Well.Services
                 _logger.LogError(ex, "An error occurred while seeding the database.");
                 throw;
             }
-        }
-
-        private async Task<bool> HasBeenSeededAsync(ApplicationDbContext dbContext)
-        {
-            return await dbContext.DatabaseSeeded.AnyAsync();
-        }
-
-        private async Task MarkAsSeededAsync(ApplicationDbContext dbContext)
-        {
-            dbContext.DatabaseSeeded.Add(new DatabaseSeeded
-            {
-                SeededAt = DateTime.UtcNow,
-                Description = "Initial data seed"
-            });
-            await dbContext.SaveChangesAsync();
         }
 
         private async Task SeedDataAsync(ApplicationDbContext dbContext)
