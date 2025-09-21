@@ -1,6 +1,5 @@
 namespace Synmax.Api.Well.Models;
-
-public class Well
+public class WellDetail
 {
     public string Operator { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;

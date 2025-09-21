@@ -11,6 +11,6 @@ namespace Synmax.Api.Well.Data
         }
 
         public DbSet<DatabaseSeeded> DatabaseSeeded { get; set; }
-        public DbSet<Well> Wells { get; set; }
+        public DbSet<WellDetail> WellDetails { get; set; }
     }
 }
