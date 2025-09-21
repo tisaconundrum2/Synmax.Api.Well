@@ -1,6 +1,7 @@
 namespace Synmax.Api.Well.Models;
 public class WellDetail
 {
+    public Guid Id { get; set; } = Guid.NewGuid();
     public string Operator { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public string WellType { get; set; } = string.Empty;
