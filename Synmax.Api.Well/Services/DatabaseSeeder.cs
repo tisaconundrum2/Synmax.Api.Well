@@ -29,7 +29,7 @@ namespace Synmax.Api.Well.Services
             try
             {
                 await SeedDataAsync(dbContext);
-                // await MultiThreadedSeedDataAsync(dbContext);
+                // await MultiThreadedSeedDataAsync(dbContext); // see comments in method
                 _logger.LogInformation("Database seeding completed successfully.");
             }
             catch (Exception ex)
@@ -97,6 +97,9 @@ namespace Synmax.Api.Well.Services
             /* Multi-threaded version of SeedDataAsync to speed up the seeding process.
              * This version parses well details in parallel and saves them in batches to the database.
              * This should significantly reduce the total time taken to seed the database.
+             * 
+             * Well... we can't get this to work reliably due to the site's Rate Limiting.
+             * So, we are reverting to the single-threaded version for now.
              */
             if (!await dbContext.WellDetails.AnyAsync())
             {

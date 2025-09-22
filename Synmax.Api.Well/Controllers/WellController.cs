@@ -23,7 +23,7 @@ public class WellController : Controller
     }
 
     [HttpGet]
-    [Route("Well/Details/{Api}")]
+    [Route("Well/{Api}")]
     [Produces("application/json")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
