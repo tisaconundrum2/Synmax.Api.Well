@@ -2,6 +2,8 @@
 
 This ASP.NET application scrapes geospatial data from the New Mexico Oil Conservation Division (OCD). It offers an API for parsing data in a JSON format and a Website for visualizing and managing oil well data through a user-friendly interface.
 
+![An image displaying a map with items over a red polygon](image.png)
+
 ## Features
 
 - **Geospatial Data Visualization**: Displays a map with polygons and points representing oil wells.
