@@ -7,20 +7,24 @@
 
 <div class="container">
     <div class="text-center">
-        <h1 class="display-4">Welcome! Upload a GeoJSON file</h1>
+        <h1 class="display-4">Welcome! Add your polygon coordinates</h1>
     </div>
-    
+
     <!-- Add map container -->
     <div id="map" style="height: 400px; margin-bottom: 20px;"></div>
-    
+
     <p>Please write your polygon coordinates below.</p>
     <p>Format: </p>
     <pre>
 [(32.81,-104.19),(32.66,-104.32),(32.54,-104.24),(32.50,-104.03),(32.73,-104.01),(32.79,-103.91),(32.84,-104.05),(32.81,-104.19)]
     </pre>
-    <form asp-controller="GeoSpatial" asp-action="Upload" method="post" id="coordForm">
-        <textarea name="geoJson" class="form-control" rows="10" placeholder="Paste your Coordinates here..." id="coordInput"></textarea>
-        <button type="submit" class="btn btn-primary mt-2">Submit</button>
+    <form asp-controller="GeoSpatial" asp-action="PolygonSearch" method="post" id="coordForm">
+        <textarea name="geoJson" class="form-control" rows="10" placeholder="Paste your Coordinates here..."
+            id="coordInput"></textarea>
+        <div class="mt-2">
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <button type="button" id="downloadBtn" class="btn btn-secondary">Download CSV</button>
+        </div>
     </form>
 </div>
 
@@ -29,40 +33,48 @@
 <script>
     // Initialize map
     const map = L.map('map').setView([32.7, -104.1], 9);
-    
+
     // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Handle form submission
-    document.getElementById('coordForm').addEventListener('submit', function(e) {
+    // Replace the form submission handler with this updated version:
+    document.getElementById('coordForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        
-        // Get coordinates from textarea
+
+        // Get coordinates from textarea and parse them
         const coordStr = document.getElementById('coordInput').value;
         const coords = JSON.parse(coordStr.replace(/\(/g, '[').replace(/\)/g, ']'));
-        
-        // Create polygon
-        const polygon = L.polygon(coords, {color: 'red'}).addTo(map);
-        
+
+        // Create polygon for the map
+        const polygon = L.polygon(coords, { color: 'red' }).addTo(map);
+
+        // Transform coordinates into the required format for the API
+        const formattedCoords = coords.map(coord => ({
+            latitude: coord[0],
+            longitude: coord[1]
+        }));
+
         // Submit form through AJAX
         fetch(this.action, {
             method: 'POST',
-            body: new FormData(this)
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formattedCoords)
         })
-        .then(response => response.json())
-        .then(data => {
-            // Add markers for each well
-            data.forEach(well => {
-                L.marker([well.latitude, well.longitude])
-                    .bindPopup(`API Number: ${well.apiNumbers}`)
-                    .addTo(map);
+            .then(response => response.json())
+            .then(data => {
+                // Add markers for each well
+                data.forEach(well => {
+                    L.marker([well.latitude, well.longitude])
+                        .bindPopup(`API Number: ${well.apiNumbers}`)
+                        .addTo(map);
+                });
+
+                // Fit map to show all markers and polygon
+                const bounds = polygon.getBounds();
+                map.fitBounds(bounds);
             });
-            
-            // Fit map to show all markers and polygon
-            const bounds = polygon.getBounds();
-            map.fitBounds(bounds);
-        });
-    });
-</script>
+    });</script>
