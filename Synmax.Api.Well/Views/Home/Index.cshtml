@@ -2,7 +2,67 @@
     ViewData["Title"] = "Home Page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<!-- Add Leaflet CSS in the head section -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="container">
+    <div class="text-center">
+        <h1 class="display-4">Welcome! Upload a GeoJSON file</h1>
+    </div>
+    
+    <!-- Add map container -->
+    <div id="map" style="height: 400px; margin-bottom: 20px;"></div>
+    
+    <p>Please write your polygon coordinates below.</p>
+    <p>Format: </p>
+    <pre>
+[(32.81,-104.19),(32.66,-104.32),(32.54,-104.24),(32.50,-104.03),(32.73,-104.01),(32.79,-103.91),(32.84,-104.05),(32.81,-104.19)]
+    </pre>
+    <form asp-controller="GeoSpatial" asp-action="Upload" method="post" id="coordForm">
+        <textarea name="geoJson" class="form-control" rows="10" placeholder="Paste your Coordinates here..." id="coordInput"></textarea>
+        <button type="submit" class="btn btn-primary mt-2">Submit</button>
+    </form>
 </div>
+
+<!-- Add Leaflet JS before closing body tag -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    // Initialize map
+    const map = L.map('map').setView([32.7, -104.1], 9);
+    
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Handle form submission
+    document.getElementById('coordForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Get coordinates from textarea
+        const coordStr = document.getElementById('coordInput').value;
+        const coords = JSON.parse(coordStr.replace(/\(/g, '[').replace(/\)/g, ']'));
+        
+        // Create polygon
+        const polygon = L.polygon(coords, {color: 'red'}).addTo(map);
+        
+        // Submit form through AJAX
+        fetch(this.action, {
+            method: 'POST',
+            body: new FormData(this)
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Add markers for each well
+            data.forEach(well => {
+                L.marker([well.latitude, well.longitude])
+                    .bindPopup(`API Number: ${well.apiNumbers}`)
+                    .addTo(map);
+            });
+            
+            // Fit map to show all markers and polygon
+            const bounds = polygon.getBounds();
+            map.fitBounds(bounds);
+        });
+    });
+</script>

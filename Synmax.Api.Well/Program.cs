@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
 using Microsoft.EntityFrameworkCore;
 using Synmax.Api.Well.Data;
 using Synmax.Api.Well.Services;
@@ -6,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+
+StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
 
 // Add Swagger/OpenAPI support
 builder.Services.AddEndpointsApiExplorer();

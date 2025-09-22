@@ -51,7 +51,7 @@ public class GeoSpatialController : Controller
         }
     }
 
-    public List<string> GetApiNumbersWithinPolygon(List<Coordinate> polygon)
+    public List<PolygonSearchResult> GetApiNumbersWithinPolygon(List<Coordinate> polygon)
     {
         var geometryFactory = new GeometryFactory();
         
@@ -60,9 +60,21 @@ public class GeoSpatialController : Controller
             new NetTopologySuite.Geometries.Coordinate(p.Longitude, p.Latitude)).ToArray();
         var polygonGeometry = geometryFactory.CreatePolygon(coordinates);
     
-        // Query wells and create points from their coordinates
-        var apiNumbers = _context.WellDetails
+        // Because you need SQL for spatial queries, we will need to do the following instead
+        var wellData = _context.WellDetails
             .Where(w => w.Latitude != null && w.Longitude != null)
+            .Select(w => new 
+            {
+                w.API,
+                w.Latitude,
+                w.Longitude
+            })
+            .ToList();
+
+        // Then perform spatial operations in memory
+        // This is not efficient for large datasets but works for demonstration purposes
+        // TODO: Figure out how to do this in SQL directly
+        var polygonSearchResults = wellData
             .Select(w => new
             {
                 w.API,
@@ -70,12 +82,16 @@ public class GeoSpatialController : Controller
                     new NetTopologySuite.Geometries.Coordinate((double)w.Longitude, (double)w.Latitude))
             })
             .Where(w => polygonGeometry.Contains(w.Point))
-            .Select(w => w.API)
+            .Select(w => new PolygonSearchResult
+            {
+                ApiNumbers = w.API,
+                Latitude = w.Point.Y,
+                Longitude = w.Point.X
+            })
             .ToList();
     
-        return apiNumbers;
-    }
-    
+        return polygonSearchResults;
+    }    
     [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
     public IActionResult Error()
     {
