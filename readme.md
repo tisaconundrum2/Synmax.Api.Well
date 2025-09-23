@@ -82,4 +82,4 @@ Implemented to avoid overloading the OCD website, with single-threaded scraping 
 
 ## Contact
 
-For questions or to discuss this project further, please contact [Your Contact Information].
+For questions or to discuss this project further, feel free to contact me :)
